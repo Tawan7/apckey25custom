@@ -1,0 +1,67 @@
+Pad R1C1,Note,0,32,instrument,0,Acoustic Grand Piano
+Pad R2C1,Note,0,24,instrument,4,Electric Piano
+Pad R3C1,Note,0,16,instrument,7,Clavinet
+Pad R4C1,Note,0,8,instrument,6,Harpsichord
+Pad R5C1,Note,0,0,instrument,11,Vibraphone
+Pad R1C2,Note,0,33,instrument,12,Marimba
+Pad R2C2,Note,0,25,instrument,19,Church Organ
+Pad R3C2,Note,0,17,instrument,21,Accordion
+Pad R4C2,Note,0,9,instrument,24,Nylon Guitar
+Pad R5C2,Note,0,1,instrument,27,Clean Electric Guitar
+Pad R1C3,Note,0,34,instrument,29,Overdriven Guitar
+Pad R2C3,Note,0,26,instrument,32,Acoustic Bass
+Pad R3C3,Note,0,18,instrument,33,Finger Bass
+Pad R4C3,Note,0,10,instrument,40,Violin
+Pad R5C3,Note,0,2,instrument,48,Strings Ensemble
+Pad R1C4,Note,0,35,instrument,52,Choir Aahs
+Pad R2C4,Note,0,27,instrument,56,Trumpet
+Pad R3C4,Note,0,19,instrument,66,Alto Sax
+Pad R4C4,Note,0,11,instrument,80,Synth Lead
+Pad R5C4,Note,0,3,instrument,88,Synth Pad
+Pad R1C5,Note,0,36,loop_pre,1,
+Pad R2C5,Note,0,28,loop_pre,2,
+Pad R3C5,Note,0,20,loop_pre,3,
+Pad R4C5,Note,0,12,loop_pre,4,
+Pad R5C5,Note,0,4,loop_pre,5,
+Pad R1C6,Note,0,37,loop_pre,6,
+Pad R2C6,Note,0,29,loop_pre,7,
+Pad R3C6,Note,0,21,loop_pre,8,
+Pad R4C6,Note,0,13,loop_pre,9,
+Pad R5C6,Note,0,5,loop_pre,10,
+Pad R1C7,Note,0,38,loop_pre,11,
+Pad R2C7,Note,0,30,loop_pre,12,
+Pad R3C7,Note,0,22,loop_pre,13,
+Pad R4C7,Note,0,14,loop_pre,14,
+Pad R5C7,Note,0,6,loop_pre,15,
+Pad R1C8,Note,0,39,loop_rec,1,
+Pad R2C8,Note,0,31,loop_rec,2,
+Pad R3C8,Note,0,23,loop_rec,3,
+Pad R4C8,Note,0,15,loop_rec,4,
+Pad R5C8,Note,0,7,loop_rec,5,
+Arrow Up,Note,0,64,reserved,,
+Arrow Down,Note,0,65,reserved,,
+Arrow Left,Note,0,66,reserved,,
+Arrow Right,Note,0,67,reserved,,
+Volume Mode,Note,0,68,reserved,,
+Pan Mode,Note,0,69,reserved,,
+Send Mode,Note,0,70,reserved,,
+Device Mode,Note,0,71,reserved,,
+Stop All Clips,Note,0,81,reserved,,
+Clip Stop,Note,0,82,reserved,,
+Solo,Note,0,83,reserved,,
+Rec Arm,Note,0,84,reserved,,
+Mute,Note,0,85,reserved,,
+Select,Note,0,86,reserved,,
+Play/Pause,Note,0,91,transport_play,,
+Rec,Note,0,93,transport_rec,,
+Shift,Note,0,98,shift,,
+Knob 1,CC,0,48,knob_volume,1,Keys volume
+Knob 2,CC,0,49,knob_volume,9,Drums volume
+Knob 3,CC,0,50,knob_pan,1,Keys pan
+Knob 4,CC,0,51,knob_pan,9,Drums pan
+Knob 5,CC,0,52,reserved,,
+Knob 6,CC,0,53,reserved,,
+Knob 7,CC,0,54,reserved,,
+Knob 8,CC,0,55,reserved,,
+Sustain,CC,1,64,sustain,,
+
