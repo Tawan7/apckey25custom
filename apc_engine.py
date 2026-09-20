@@ -84,7 +84,7 @@ class Engine:
             return None
         print(f"No running synth. Starting FluidSynth with {soundfont}")
         self._synth_process = subprocess.Popen(
-            ["fluidsynth", "-a", "alsa", "-m", "alsa_seq", "-g", "0.5", soundfont],
+            ["fluidsynth", "-a", "pulseaudio", "-m", "alsa_seq", "-g", "0.5", soundfont],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(50):
             time.sleep(0.2)
@@ -110,6 +110,8 @@ class Engine:
     def handle_midi(self, message, data=None):
         if not message:
             return
+        if isinstance(message, tuple):
+            message = message[0]
         status = message[0] & 0xF0
         channel = message[0] & 0x0F
 
@@ -124,7 +126,7 @@ class Engine:
 
     def _handle_note(self, channel, note, is_on, velocity):
         action = self.config.get(("Note", channel, note))
-        if channel == 1 and 48 <= note <= 72:
+        if channel == 1:
             out_status = (0x90 if is_on else 0x80) | KEYS_CHANNEL
             self._send([out_status, note, velocity])
             return
