@@ -1,2 +1,6 @@
-apc_tkn
+__pycache__/
+*.pyc
+soundfonts/
+*.sf2
+*.zip
 apc_tkn

@@ -1,0 +1,19 @@
+physical_control,type,midi_channel,midi_note,velocity,assigned_function,remap_to_note,remap_to_channel
+"Pad 1 (Row 1, Col 1)",Note,0,32,127,Kick Drum,36,10
+"Pad 2 (Row 1, Col 2)",Note,0,33,127,Snare Drum,38,10
+"Pad 3 (Row 1, Col 3)",Note,0,34,127,Hi-Hat Closed,42,10
+"Pad 4 (Row 1, Col 4)",Note,0,35,127,Hi-Hat Open,46,10
+"Pad 5 (Row 1, Col 5)",Note,0,36,127,Tom 1,48,10
+"Pad 6 (Row 1, Col 6)",Note,0,37,127,Tom 2,50,10
+"Pad 7 (Row 1, Col 7)",Note,0,38,127,Tom 3,52,10
+"Pad 8 (Row 1, Col 8)",Note,0,39,127,Clap,39,10
+"Pad 9 (Row 2, Col 1)",Note,0,24,127,Cowbell,56,10
+"Pad 10 (Row 2, Col 2)",Note,0,25,127,Tambourine,58,10
+"Pad 11 (Row 2, Col 3)",Note,0,26,127,Ride Cymbal,51,10
+"Pad 12 (Row 2, Col 4)",Note,0,27,127,Crash Cymbal,55,10
+"Pad 13 (Row 2, Col 5)",Note,0,28,127,Percussion 1,60,10
+"Pad 14 (Row 2, Col 6)",Note,0,29,127,Percussion 2,62,10
+"Pad 15 (Row 2, Col 7)",Note,0,30,127,Percussion 3,64,10
+"Pad 16 (Row 2, Col 8)",Note,0,31,127,Percussion 4,65,10
+"Pad 17 (Row 3, Col 1)",Note,0,16,127,Bass Drum (Alternate),36,10
+"Pad 18 (Row 3, Col 2)",Note,0,17,127,Snare Drum (Alternate),38,10
