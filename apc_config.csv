@@ -1,3 +1,4 @@
+control,type,channel,number,function,param1,param2
 Pad R1C1,Note,0,32,instrument,0,Acoustic Grand Piano
 Pad R2C1,Note,0,24,instrument,4,Electric Piano
 Pad R3C1,Note,0,16,instrument,7,Clavinet
