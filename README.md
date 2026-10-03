@@ -1,0 +1,72 @@
+# APC Key 25 Custom
+
+Custom MIDI engine for the AKAI APC Key 25, built for live techno without Ableton.
+Keys, pads and knobs drive FluidSynth/Qsynth directly (multi-timbral, 16 channels).
+
+## Layout
+
+```
+        C1   C2   C3   C4   C5   C6   C7   C8
+Row 1   32   33   34   35 | 36   37   38 | 39  <- loop 1
+Row 2   24   25   26   27 | 28   29   30 | 31  <- loop 2
+Row 3   16   17   18   19 | 20   21   22 | 23  <- loop 3
+Row 4    8    9   10   11 | 12   13   14 | 15  <- loop 4
+Row 5    0    1    2    3 |  4    5    6 |  7  <- loop 5
+        └─ INSTRUMENTS ─┘└── DRUM PADS ──┘└ LOOP REC
+```
+
+- **Instrument pads (cols 1-4):** 20 slots. Each slot has its own synth channel,
+  so pressing an instrument pad only routes your keyboard to that instrument —
+  nothing already playing changes.
+- **3 banks:** Arrow Down = next bank, Arrow Up = previous. Each bank lights the
+  instrument pads in its own LED color (A/B/C), so you always know where you are.
+- **Drum pads (cols 5-7):** 15 GM percussion sounds on MIDI ch10.
+- **Loop pads (col 8):** 5 recordable loop slots, one per row.
+  - Press = start recording your keyboard (fixed 4-beat window; press again to stop early)
+  - Automatically starts playing when recording finishes
+  - Press again = stop / resume
+  - **Shift + pad = clear** the loop
+  - LEDs: red = recording, green = playing, dim = recorded but stopped, off = empty
+- **Play/Pause button:** stops all playing loops / resumes all stopped loops.
+- **Knobs 1-4:** volume/pan for keys and drums channels. **Sustain pedal** works.
+
+## Files
+
+- `apc_engine.py` — the engine (run this)
+- `apc_banks.csv` — 3 banks x 20 instrument slots (bank, pad note, channel, GM program, name)
+- `apc_drums.csv` — pad note -> GM drum note mapping
+- `apc_config.csv` — knobs and sustain assignments
+- `midi_monitor.py` — shows raw MIDI from the controller
+- `led_test.py` — cycles LED palette colors so you can pick bank colors
+- `apc_key_25_remap.py` — legacy standalone remapper (not used by the engine)
+
+## Run
+
+```bash
+python apc_engine.py
+```
+
+Starts headless FluidSynth with a soundfont if Qsynth isn't already running.
+
+## Tuning the LED colors
+
+The pad LED color is set by the velocity byte of a Note On sent to the APC's
+output port (fixed 128-color palette). Run `python led_test.py`, watch the
+steps, and note the velocity of a color you like. Then edit the constants at
+the top of `apc_engine.py`:
+
+```python
+BANK_COLOR = [25, 45, 61]   # banks A, B, C
+COLOR_RECORDING = 3
+COLOR_PLAYING = 20
+COLOR_STOPPED = 5
+```
+
+## Tuning the sounds
+
+Edit `apc_banks.csv`: each row is `bank, pad note, synth channel, GM program, name`.
+Give every slot its own channel so instruments layer instead of replacing
+each other. Channels 10 (index 9) is reserved for drums.
+
+Loop length is `LOOP_LENGTH` seconds at the top of `apc_engine.py` (default 4.0,
+one bar at ~120 BPM; set it to match your tempo: 240 / BPM).
