@@ -49,11 +49,11 @@ bank,note,channel,program,name
 2,17,7,100,Atmosphere
 2,9,8,101,Brightness
 2,1,10,102,Clouds
-2,34,11,103,Ghost
-2,26,12,104,Echoes
-2,18,13,105,Sci-Fi
-2,10,14,106,Sitar
-2,2,15,107,Santur
+2,34,11,52,Choir Aahs
+2,26,12,53,Voice Oohs
+2,18,13,85,Voice Lead
+2,10,14,54,Voice Pop
+2,2,15,103,Ghost Voice
 2,35,0,88,Pad A16
 2,27,1,91,Pad B16
 2,19,2,94,Pad C16

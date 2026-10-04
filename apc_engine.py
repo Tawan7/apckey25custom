@@ -380,7 +380,7 @@ class Engine:
     def _toggle_pattern(self, note):
         slot = self.patterns[self.note_to_pattern[note]]
         if slot.state == "playing":
-            slot.stop_playback()
+            slot.stop_playback(self)
             print(f"Pattern '{slot.pattern_name}': off")
         else:
             slot.start_playback(self)
@@ -390,7 +390,7 @@ class Engine:
     def _handle_loop_press(self, note):
         slot = self.loops[self.note_to_loop[note]]
         if self.shift_held:
-            slot.clear()
+            slot.clear(self)
             print(f"Loop {slot.index + 1}: cleared")
         elif slot.state == "empty":
             slot.begin_record()
@@ -399,7 +399,7 @@ class Engine:
         elif slot.state == "recording":
             self._finish_recording(slot)
         elif slot.state == "playing":
-            slot.stop_playback()
+            slot.stop_playback(self)
             print(f"Loop {slot.index + 1}: stopped")
         elif slot.state == "stopped":
             slot.start_playback(self)
@@ -420,7 +420,7 @@ class Engine:
         if any(s.state == "playing" for s in self.loops):
             for slot in self.loops:
                 if slot.state == "playing":
-                    slot.stop_playback()
+                    slot.stop_playback(self)
             print("Transport: STOP")
         else:
             started = False
