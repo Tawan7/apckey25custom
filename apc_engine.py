@@ -143,13 +143,17 @@ class LoopSlot:
         self.thread = threading.Thread(target=self._play, args=(engine,), daemon=True)
         self.thread.start()
 
-    def stop_playback(self):
+    def stop_playback(self, engine=None):
         self.stop_flag.set()
         self.state = "stopped" if self.events else "empty"
+        if engine is not None:
+            engine.release_loop_notes(self)
 
-    def clear(self):
+    def clear(self, engine=None):
         self.stop_flag.set()
         self.state = "empty"
+        if engine is not None:
+            engine.release_loop_notes(self)
         self.events = []
 
     def _play(self, engine):
@@ -177,6 +181,7 @@ class Engine:
         self.octave = 0
         self.selected_note = None
         self.key_channel = SLOT_CHANNELS[0]
+        self.held_notes = {}
         self.loops = [LoopSlot(i) for i in range(LOOP_SLOTS)]
         self.patterns = []
         for i, (name, beats) in enumerate(PATTERNS):
@@ -344,12 +349,33 @@ class Engine:
 
     def _handle_key(self, note, is_on, velocity):
         out_status = (0x90 if is_on else 0x80) | self.key_channel
-        message = [out_status, note + self.octave * 12, velocity]
+        played = note + self.octave * 12
+        message = [out_status, played, velocity]
         self.send_synth(message)
+        if is_on:
+            self.held_notes[(self.key_channel, played)] = message
+        else:
+            self.held_notes.pop((self.key_channel, played), None)
         now = time.monotonic()
         for slot in self.loops:
             if slot.state == "recording":
                 slot.events.append((now - slot.start_time, message))
+
+    def _release_held_notes(self, channel=None):
+        for (ch, note) in list(self.held_notes):
+            if channel is None or ch == channel:
+                self.send_synth([0x80 | ch, note, 0])
+                del self.held_notes[(ch, note)]
+
+    def release_loop_notes(self, slot):
+        sounding = {}
+        for _, message in slot.events:
+            if message[0] & 0xF0 == 0x90 and message[2] > 0:
+                sounding[(message[0] & 0x0F, message[1])] = True
+            elif message[0] & 0xF0 == 0x80:
+                sounding.pop((message[0] & 0x0F, message[1]), None)
+        for (ch, note) in sounding:
+            self.send_synth([0x80 | ch, note, 0])
 
     def _shift_octave(self, direction):
         new_octave = self.octave + direction
@@ -362,6 +388,8 @@ class Engine:
     def _select_instrument(self, note):
         slot = self.note_to_slot[note]
         channel, program, name = self.banks[(self.bank, note)]
+        if channel != self.key_channel:
+            self._release_held_notes(self.key_channel)
         self.key_channel = channel
         self.send_synth([0xC0 | channel, program])
         self.selected_note = note
@@ -371,6 +399,7 @@ class Engine:
     def _switch_bank(self, direction):
         self.bank = (self.bank + direction) % 3
         channel, program, name = self.banks[(self.bank, SLOT_NOTE_ORDER[0])]
+        self._release_held_notes(self.key_channel)
         self.key_channel = channel
         self.selected_note = SLOT_NOTE_ORDER[0]
         self.send_synth([0xC0 | channel, program])
@@ -409,6 +438,9 @@ class Engine:
     def _finish_recording(self, slot):
         if slot.state != "recording":
             return
+        for (ch, note) in list(self.held_notes):
+            off = [0x80 | ch, note, 0]
+            slot.events.append((time.monotonic() - slot.start_time, off))
         if slot.finish_record():
             slot.start_playback(self)
             print(f"Loop {slot.index + 1}: playing ({len(slot.events)} events)")
