@@ -18,7 +18,26 @@ LOOP_LENGTH = 4.0
 LOOP_SLOTS = 5
 
 SLOT_NOTE_ORDER = [32 - r * 8 + c for r in range(5) for c in range(4)]
+DRUM_NOTE_ORDER = [36 - r * 8 + c for r in range(5) for c in range(2)]
+PATTERN_NOTE_ORDER = [38 - r * 8 for r in range(5)]
 LOOP_NOTE_ORDER = [39 - r * 8 for r in range(5)]
+
+KICK, SNARE, CHH, OHH, CLAP = 36, 38, 42, 46, 39
+PATTERNS = [
+    ("Four on the floor", [(i, [0x90 | DRUM_CHANNEL, KICK, 110]) for i in range(4)]
+     + [(i + 0.5, [0x90 | DRUM_CHANNEL, OHH, 70]) for i in range(4)]),
+    ("Kick + clap", [(i, [0x90 | DRUM_CHANNEL, KICK, 110]) for i in range(4)]
+     + [(i, [0x90 | DRUM_CHANNEL, CLAP, 100]) for i in (1, 3)]
+     + [(i + 0.5, [0x90 | DRUM_CHANNEL, CHH, 60]) for i in range(4)]),
+    ("Hypnotic", [(i, [0x90 | DRUM_CHANNEL, KICK, 110]) for i in range(4)]
+     + [(i * 0.25, [0x90 | DRUM_CHANNEL, CHH, 55]) for i in range(16)]
+     + [(i + 0.5, [0x90 | DRUM_CHANNEL, OHH, 65]) for i in range(4)]),
+    ("Snare roll", [(i, [0x90 | DRUM_CHANNEL, KICK, 110]) for i in (0, 2)]
+     + [(i * 0.25, [0x90 | DRUM_CHANNEL, SNARE, 40 + int(60 * i / 12)]) for i in range(12, 16)]
+     + [(i + 0.5, [0x90 | DRUM_CHANNEL, CHH, 60]) for i in range(4)]),
+    ("Sparse atmo", [(i, [0x90 | DRUM_CHANNEL, KICK, 100]) for i in (0, 2)]
+     + [(i, [0x90 | DRUM_CHANNEL, OHH, 55]) for i in (1, 3)]),
+]
 SLOT_CHANNELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15]
 
 BANK_COLOR = [1, 5, 3]
@@ -159,7 +178,15 @@ class Engine:
         self.selected_note = None
         self.key_channel = SLOT_CHANNELS[0]
         self.loops = [LoopSlot(i) for i in range(LOOP_SLOTS)]
+        self.patterns = []
+        for i, (name, beats) in enumerate(PATTERNS):
+            slot = LoopSlot(i)
+            slot.events = [(b / 4 * LOOP_LENGTH, msg) for b, msg in beats]
+            slot.state = "stopped"
+            slot.pattern_name = name
+            self.patterns.append(slot)
         self.note_to_loop = {n: i for i, n in enumerate(LOOP_NOTE_ORDER)}
+        self.note_to_pattern = {n: i for i, n in enumerate(PATTERN_NOTE_ORDER)}
         self.note_to_slot = {n: i for i, n in enumerate(SLOT_NOTE_ORDER)}
         self.midi_in = None
         self.midi_out = rtmidi.MidiOut()
@@ -238,6 +265,12 @@ class Engine:
             self.set_led(note, led)
         for note in self.drums:
             self.set_led(note, DRUM_COLOR)
+        for note, slot in self.note_to_pattern.items():
+            state = self.patterns[slot].state
+            if state == "playing":
+                self.set_led(note, COLOR_PLAYING)
+            else:
+                self.set_led(note, COLOR_STOPPED)
         for note, slot in self.note_to_loop.items():
             state = self.loops[slot].state
             if state == "recording":
@@ -290,6 +323,10 @@ class Engine:
                 if slot.state == "recording":
                     slot.events.append((now - slot.start_time, message))
             return
+        if channel == 0 and note in self.note_to_pattern:
+            if is_on:
+                self._toggle_pattern(note)
+            return
         if channel == 0 and note in self.note_to_loop:
             if is_on:
                 self._handle_loop_press(note)
@@ -338,6 +375,16 @@ class Engine:
         self.selected_note = SLOT_NOTE_ORDER[0]
         self.send_synth([0xC0 | channel, program])
         print(f"Instrument bank: {'ABC'[self.bank]} ({name})")
+        self.refresh_leds()
+
+    def _toggle_pattern(self, note):
+        slot = self.patterns[self.note_to_pattern[note]]
+        if slot.state == "playing":
+            slot.stop_playback()
+            print(f"Pattern '{slot.pattern_name}': off")
+        else:
+            slot.start_playback(self)
+            print(f"Pattern '{slot.pattern_name}': on")
         self.refresh_leds()
 
     def _handle_loop_press(self, note):

@@ -1,61 +1,61 @@
 bank,note,channel,program,name
 0,32,0,38,Synth Bass 1
 0,24,1,39,Synth Bass 2
-0,16,2,33,Finger Bass
-0,8,3,34,Electric Bass
-0,0,4,37,Slap Bass
-0,33,5,81,Square Lead
-0,25,6,80,Saw Lead
-0,17,7,88,Synth Pad
-0,9,8,95,Voice Pad
-0,1,10,99,FX Atmo
-0,34,11,92,Crystal
-0,26,12,48,Strings
-0,18,13,49,Strings 2
-0,10,14,50,Synth Strings
-0,2,15,4,Electric Piano
-0,35,0,30,Distortion Guitar
-0,27,1,32,Guitar Harmonics
-0,19,2,28,Electric Muted Guitar
-0,11,3,26,Electric Jazz Guitar
-0,3,4,61,Brass Section
-1,32,0,38,Synth Bass 1
-1,24,1,39,Synth Bass 2
-1,16,2,33,Finger Bass
-1,8,3,34,Electric Bass
-1,0,4,37,Slap Bass
-1,33,5,81,Square Lead
-1,25,6,80,Saw Lead
-1,17,7,88,Synth Pad
-1,9,8,95,Voice Pad
-1,1,10,99,FX Atmo
-1,34,11,92,Crystal
-1,26,12,48,Strings
-1,18,13,49,Strings 2
-1,10,14,50,Synth Strings
-1,2,15,4,Electric Piano
-1,35,0,30,Distortion Guitar
-1,27,1,32,Guitar Harmonics
-1,19,2,28,Electric Muted Guitar
-1,11,3,26,Electric Jazz Guitar
-1,3,4,61,Brass Section
-2,32,0,38,Synth Bass 1
-2,24,1,39,Synth Bass 2
-2,16,2,33,Finger Bass
-2,8,3,34,Electric Bass
-2,0,4,37,Slap Bass
-2,33,5,81,Square Lead
-2,25,6,80,Saw Lead
-2,17,7,88,Synth Pad
-2,9,8,95,Voice Pad
-2,1,10,99,FX Atmo
-2,34,11,92,Crystal
-2,26,12,48,Strings
-2,18,13,49,Strings 2
-2,10,14,50,Synth Strings
-2,2,15,4,Electric Piano
-2,35,0,30,Distortion Guitar
-2,27,1,32,Guitar Harmonics
-2,19,2,28,Electric Muted Guitar
-2,11,3,26,Electric Jazz Guitar
-2,3,4,61,Brass Section
+0,16,2,87,Bass & Lead
+0,8,3,33,Finger Bass
+0,0,4,34,Electric Bass
+0,33,5,37,Slap Bass
+0,25,6,36,Slap Bass 2
+0,17,7,43,Pizzicato Bass
+0,9,8,32,Guitar Harmonics Bass
+0,1,10,35,Fretless Bass
+0,34,11,39,Bass 2
+0,26,12,38,Bass 3
+0,18,13,41,Viola Bass
+0,10,14,44,Contrabass
+0,2,15,45,Tremolo Bass
+0,35,0,38,Bass A16
+0,27,1,39,Bass B16
+0,19,2,87,Bass C16
+0,11,3,33,Bass D16
+0,3,4,34,Bass E16
+1,32,5,81,Square Lead
+1,24,6,80,Saw Lead
+1,16,7,86,Pad Lead
+1,8,8,62,Brass Synth
+1,0,10,61,Brass Section
+1,33,11,56,Trumpet
+1,25,12,54,Overdriven Lead
+1,17,13,50,Synth Strings Lead
+1,9,14,48,Strings Lead
+1,1,15,40,Violin Lead
+1,34,5,82,Lead A16
+1,26,6,85,Lead B16
+1,18,7,84,Lead C16
+1,10,8,83,Lead D16
+1,2,10,79,Lead E16
+1,35,11,57,Lead F16
+1,27,12,58,Lead G16
+1,19,13,60,Lead H16
+1,11,14,59,Lead I16
+1,3,15,66,Lead J16
+2,32,0,88,Synth Pad
+2,24,1,91,Pad 2
+2,16,2,94,Halo Pad
+2,8,3,95,Voice Pad
+2,0,4,98,Synth FX
+2,33,5,99,FX Atmo
+2,25,6,92,Crystal
+2,17,7,100,Atmosphere
+2,9,8,101,Brightness
+2,1,10,102,Clouds
+2,34,11,103,Ghost
+2,26,12,104,Echoes
+2,18,13,105,Sci-Fi
+2,10,14,106,Sitar
+2,2,15,107,Santur
+2,35,0,88,Pad A16
+2,27,1,91,Pad B16
+2,19,2,94,Pad C16
+2,11,3,95,Pad D16
+2,3,4,98,FX E16

@@ -6,14 +6,18 @@ Keys, pads and knobs drive FluidSynth/Qsynth directly (multi-timbral, 16 channel
 ## Layout
 
 ```
-        C1   C2   C3   C4   C5   C6   C7   C8
-Row 1   32   33   34   35 | 36   37   38 | 39  <- loop 1
-Row 2   24   25   26   27 | 28   29   30 | 31  <- loop 2
-Row 3   16   17   18   19 | 20   21   22 | 23  <- loop 3
-Row 4    8    9   10   11 | 12   13   14 | 15  <- loop 4
-Row 5    0    1    2    3 |  4    5    6 |  7  <- loop 5
-        └─ INSTRUMENTS ─┘└── DRUM PADS ──┘└ LOOP REC
+        C1   C2   C3   C4   C5   C6   C7      C8
+Row 1   32   33   34   35 | 36   37 | 38    | 39   <- pattern/rec 1
+Row 2   24   25   26   27 | 28   29 | 30    | 31
+Row 3   16   17   18   19 | 20   21 | 22    | 23
+Row 4    8    9   10   11 | 12   13 | 14    | 15
+Row 5    0    1    2    3 |  4    5 |  6    |  7
+        └─ INSTRUMENTS ─┘└ DRUMS ┘└PATTERNS┘└REC SLOTS┘
 ```
+
+Pages (Arrow Down/Up): **A = BASSES** (green), **B = LEADS** (amber),
+**C = PADS/FX** (red). Each page uses its own set of synth channels, so a
+bass from page A and a lead from page B layer together without conflict.
 
 - **Instrument pads (cols 1-4):** 20 slots. Each slot has its own synth channel,
   so pressing an instrument pad only routes your keyboard to that instrument —
@@ -25,8 +29,11 @@ Row 5    0    1    2    3 |  4    5    6 |  7  <- loop 5
   range -3..+3 octaves. Look at the console for the current value. Note: this uses
   CC 58/59, which the original APC Key 25 sends for octave buttons — verify with
   `midi_monitor.py` and adjust OCTAVE_CC_DOWN/OCTAVE_CC_UP if needed.
-- **Drum pads (cols 5-7):** 15 GM percussion sounds on MIDI ch10.
-- **Loop pads (col 8):** 5 recordable loop slots, one per row.
+- **Drum pads (cols 5-6):** 10 GM percussion sounds on MIDI ch10.
+- **Pattern pads (col 7):** 5 built-in techno patterns (four-on-the-floor,
+  kick+clap, hypnotic hats, snare roll, sparse atmo). Press to toggle
+  on/off. They follow LOOP_LENGTH (set 240/BPM for your tempo).
+- **Record pads (col 8):** 5 recordable loop slots, one per row.
   - Press = start recording (fixed 4-beat window at your tempo; press again to stop early)
   - Your **keyboard notes AND drum pad hits** are both captured into the loop
   - Automatically starts playing when recording finishes
