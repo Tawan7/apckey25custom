@@ -62,10 +62,10 @@ steps, and note the velocity of a color you like. Then edit the constants at
 the top of `apc_engine.py`:
 
 ```python
-BANK_COLOR = [25, 45, 61]   # banks A, B, C
-COLOR_RECORDING = 3
-COLOR_PLAYING = 20
-COLOR_STOPPED = 5
+BANK_COLOR = [1, 5, 3]      # banks: green, amber, red (APC Key 25 mk1 tri-color pads)
+COLOR_RECORDING = 4  # red blink
+COLOR_PLAYING = 1    # green
+COLOR_STOPPED = 5    # amber
 ```
 
 ## Tuning the sounds
