@@ -271,6 +271,8 @@ class Engine:
                 self._handle_cc(channel, message[1], message[2])
 
     def _handle_note(self, channel, note, is_on, velocity):
+        if channel == 0 and is_on:
+            print(f"[pad] raw note={note}")
         if channel == KEYS_INPUT_CHANNEL:
             self._handle_key(note, is_on, velocity)
             return
