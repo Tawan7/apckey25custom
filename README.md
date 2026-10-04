@@ -17,12 +17,18 @@ Row 5    0    1    2    3 |  4    5    6 |  7  <- loop 5
 
 - **Instrument pads (cols 1-4):** 20 slots. Each slot has its own synth channel,
   so pressing an instrument pad only routes your keyboard to that instrument —
-  nothing already playing changes.
-- **3 banks:** Arrow Down = next bank, Arrow Up = previous. Each bank lights the
-  instrument pads in its own LED color (A/B/C), so you always know where you are.
+  nothing already playing changes. The **currently selected slot lights brighter**
+  in the bank color.
+- **3 banks (pages):** Arrow Down = next bank, Arrow Up = previous. Each bank lights the
+  instrument pads in its own LED color (A/B/C), so you always know which page you're on.
+- **Octave:** the APC's Octave Down/Up buttons (under the keys) shift your playing
+  range -3..+3 octaves. Look at the console for the current value. Note: this uses
+  CC 58/59, which the original APC Key 25 sends for octave buttons — verify with
+  `midi_monitor.py` and adjust OCTAVE_CC_DOWN/OCTAVE_CC_UP if needed.
 - **Drum pads (cols 5-7):** 15 GM percussion sounds on MIDI ch10.
 - **Loop pads (col 8):** 5 recordable loop slots, one per row.
-  - Press = start recording your keyboard (fixed 4-beat window; press again to stop early)
+  - Press = start recording (fixed 4-beat window at your tempo; press again to stop early)
+  - Your **keyboard notes AND drum pad hits** are both captured into the loop
   - Automatically starts playing when recording finishes
   - Press again = stop / resume
   - **Shift + pad = clear** the loop

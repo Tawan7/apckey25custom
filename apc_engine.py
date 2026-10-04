@@ -22,11 +22,17 @@ LOOP_NOTE_ORDER = [39 - r * 8 for r in range(5)]
 SLOT_CHANNELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15]
 
 BANK_COLOR = [25, 45, 61]
+SELECTED_COLOR = [26, 46, 62]
 DRUM_COLOR = 9
 COLOR_RECORDING = 3
 COLOR_PLAYING = 20
 COLOR_STOPPED = 5
 COLOR_OFF = 0
+
+OCTAVE_CC_DOWN = 58
+OCTAVE_CC_UP = 59
+OCTAVE_MIN = -3
+OCTAVE_MAX = 3
 
 SOUNDFONT_CANDIDATES = [
     "/usr/share/sounds/sf2/FluidR3_GM.sf2",
@@ -149,6 +155,7 @@ class Engine:
         self.cc_actions = cc_actions
         self.bank = 0
         self.shift_held = False
+        self.octave = 0
         self.selected_note = None
         self.key_channel = SLOT_CHANNELS[0]
         self.loops = [LoopSlot(i) for i in range(LOOP_SLOTS)]
@@ -224,7 +231,8 @@ class Engine:
     def refresh_leds(self):
         color = BANK_COLOR[self.bank]
         for note in self.note_to_slot:
-            self.set_led(note, color)
+            led = SELECTED_COLOR[self.bank] if note == self.selected_note else color
+            self.set_led(note, led)
         for note in self.drums:
             self.set_led(note, DRUM_COLOR)
         for note, slot in self.note_to_loop.items():
@@ -254,7 +262,10 @@ class Engine:
             is_on = status == 0x90 and velocity > 0
             self._handle_note(channel, message[1], is_on, velocity)
         elif status == 0xB0:
-            self._handle_cc(channel, message[1], message[2])
+            if channel == 0 and message[1] in (OCTAVE_CC_DOWN, OCTAVE_CC_UP) and message[2] > 0:
+                self._shift_octave(-1 if message[1] == OCTAVE_CC_DOWN else 1)
+            else:
+                self._handle_cc(channel, message[1], message[2])
 
     def _handle_note(self, channel, note, is_on, velocity):
         if channel == KEYS_INPUT_CHANNEL:
@@ -267,7 +278,12 @@ class Engine:
         if channel == 0 and note in self.drums:
             drum_note, name = self.drums[note]
             out_status = (0x90 if is_on else 0x80) | DRUM_CHANNEL
-            self.send_synth([out_status, drum_note, velocity])
+            message = [out_status, drum_note, velocity]
+            self.send_synth(message)
+            now = time.monotonic()
+            for slot in self.loops:
+                if slot.state == "recording":
+                    slot.events.append((now - slot.start_time, message))
             return
         if channel == 0 and note in self.note_to_loop:
             if is_on:
@@ -286,12 +302,20 @@ class Engine:
 
     def _handle_key(self, note, is_on, velocity):
         out_status = (0x90 if is_on else 0x80) | self.key_channel
-        message = [out_status, note, velocity]
+        message = [out_status, note + self.octave * 12, velocity]
         self.send_synth(message)
         now = time.monotonic()
         for slot in self.loops:
             if slot.state == "recording":
                 slot.events.append((now - slot.start_time, message))
+
+    def _shift_octave(self, direction):
+        new_octave = self.octave + direction
+        if new_octave < OCTAVE_MIN or new_octave > OCTAVE_MAX:
+            print(f"Octave: already at limit ({self.octave:+d})")
+            return
+        self.octave = new_octave
+        print(f"Octave: {self.octave:+d}")
 
     def _select_instrument(self, note):
         slot = self.note_to_slot[note]
@@ -299,6 +323,7 @@ class Engine:
         self.key_channel = channel
         self.send_synth([0xC0 | channel, program])
         self.selected_note = note
+        self.refresh_leds()
         print(f"Bank {'ABC'[self.bank]} slot {slot + 1}: {name} (ch{channel + 1})")
 
     def _switch_bank(self, direction):
