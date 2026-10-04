@@ -185,13 +185,16 @@ class Engine:
         print(f"Output: {port_name}")
 
     def _open_led_output(self):
-        idx = find_port(self.led_out.get_ports(), "apc key 25")
+        ports = self.led_out.get_ports()
+        print(f"Available MIDI outputs: {ports}")
+        idx = find_port(ports, "apc key 25")
         if idx is None:
-            print("No APC output port found; LED feedback disabled.")
+            print("APC output port not found in the list above; LED feedback disabled.")
+            print("Tip: run 'aconnect -l' — the APC must appear as a writable port.")
             self.led_out = None
             return
         self.led_out.open_port(idx)
-        print(f"LED output: {self.led_out.get_ports()[idx]}")
+        print(f"LED output: {ports[idx]}")
 
     def _start_fluidsynth(self):
         soundfont = find_soundfont()
@@ -225,8 +228,8 @@ class Engine:
             return
         try:
             self.led_out.send_message([0x90, note, color])
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"LED send failed on note {note}: {exc}")
 
     def refresh_leds(self):
         color = BANK_COLOR[self.bank]
