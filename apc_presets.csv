@@ -1,0 +1,38 @@
+preset,name,offset,drum_note,velocity
+1,Four on Floor,0.000,36,127
+1,Four on Floor,0.250,42,80
+1,Four on Floor,0.500,36,127
+1,Four on Floor,0.750,42,80
+1,Four on Floor,0.000,39,90
+1,Four on Floor,0.500,39,90
+1,Four on Floor,0.875,46,70
+2,Hypnotic,0.000,36,127
+2,Hypnotic,0.500,36,127
+2,Hypnotic,0.250,46,80
+2,Hypnotic,0.750,46,80
+2,Hypnotic,0.625,38,70
+2,Hypnotic,0.125,51,50
+2,Hypnotic,0.375,51,50
+2,Hypnotic,0.875,51,50
+2,Hypnotic,0.625,51,50
+3,Offbeat,0.000,36,127
+3,Offbeat,0.500,36,127
+3,Offbeat,0.250,46,90
+3,Offbeat,0.750,46,90
+3,Offbeat,0.250,42,60
+3,Offbeat,0.750,42,60
+4,Rolling,0.000,36,127
+4,Rolling,0.500,36,127
+4,Rolling,0.000,38,90
+4,Rolling,0.500,38,90
+4,Rolling,0.000,42,70
+4,Rolling,0.250,42,60
+4,Rolling,0.500,42,70
+4,Rolling,0.750,42,60
+4,Rolling,0.875,42,80
+5,Break,0.000,36,110
+5,Break,0.375,38,70
+5,Break,0.750,39,60
+5,Break,0.625,36,90
+5,Break,0.125,42,50
+5,Break,0.875,42,50
