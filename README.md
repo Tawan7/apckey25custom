@@ -26,9 +26,12 @@ Row 5    0    1    2    3    4    5    6    7
   - Press again = stop / resume
   - **Shift + pad = clear** the loop (record a new one right after)
   - LEDs: red = recording, green = playing, dim = recorded but stopped, off = empty
-- **Preset pads (col 8):** 5 pre-made techno drum patterns (Four on Floor,
-  Hypnotic, Offbeat, Rolling, Break). Press = start, press again = stop.
-  Green LED = playing. Edit patterns in `apc_presets.csv`.
+- **Preset pads (col 8):** 5 preset pads — pre-made techno drum patterns
+  (Four on Floor, Hypnotic, Offbeat, Rolling, Break) and/or your own saved
+  melodies. Press = start, press again = stop. Green LED = playing.
+- **Rec button:** saves all recorded loops to `apc_loops.csv`; they reload
+  automatically at startup (as stopped loops — press their pad to play).
+  Record more and press Rec again to update the file.
 - **Shift layer (hold Shift + pad):** the instrument and drum pads (cols 1-5)
   play a 2-octave minor scale on the selected instrument — a 25-pad "keyboard"
   for basslines. Loop and preset pads keep working normally while Shift is held.
@@ -47,7 +50,11 @@ Row 5    0    1    2    3    4    5    6    7
 - `apc_engine.py` — the engine (run this)
 - `apc_banks.csv` — 3 banks x 20 instrument slots (bank, pad note, channel, GM program, name)
 - `apc_drums.csv` — 5 drum pads (pad note -> GM drum note + name)
-- `apc_presets.csv` — pre-made techno patterns (preset, name, offset 0-1, drum note, velocity)
+- `apc_presets.csv` — preset patterns (drums and melodies):
+  `preset, name, offset, kind(drum|note), channel, note, velocity`.
+  Drum offsets are 0.0-1.0 of the bar; note offsets are seconds.
+- `apc_loops.csv` — your saved loops (written by the Rec button, auto-loaded)
+- `loop_to_preset.py` — turns a saved loop into a preset pad
 - `apc_config.csv` — pad, button, knob and sustain assignments
 - `midi_monitor.py` — shows raw MIDI from the controller
 - `led_test.py` — cycles LED palette colors so you can pick bank colors
@@ -90,3 +97,19 @@ COLOR_PRESET = 57
 
 Loop length is `LOOP_LENGTH` seconds at the top of `apc_engine.py` (default 4.0,
 one bar at ~120 BPM; set it to match your tempo: 240 / BPM).
+
+## Saving and reusing your creations
+
+1. Record loops as usual (cols 6-7 pads).
+2. Press **Rec** — all loops are saved to `apc_loops.csv` and reload next
+   time you start the engine.
+3. To turn a saved loop into a **preset pad** (col 8), stop the engine and run:
+
+```bash
+python loop_to_preset.py <loop slot 1-10> <preset pad 1-5> "Name"
+# example: loop slot 3 -> preset pad 2
+python loop_to_preset.py 3 2 "My Bassline"
+```
+
+The melody keeps its original notes, instruments (channels) and timing.
+Restart the engine and the preset pad plays your melody, looping.

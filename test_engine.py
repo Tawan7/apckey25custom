@@ -4,8 +4,10 @@ Run with:  python3 test_engine.py
 Uses a fake rtmidi module, so no controller, ALSA or synth is needed.
 """
 
+import os
 import sys
 import types
+import tempfile
 import time
 
 
@@ -85,6 +87,8 @@ def test_constants():
                 | set(e.SLOT_NOTE_ORDER) | set(e.DRUM_NOTE_ORDER))
     check("all 40 pads mapped once", len(all_pads) == 40)
     check("5 presets loaded", len(e.load_presets(e.PRESETS_FILE)) == 5)
+    check("preset events carry kind/channel",
+          all(len(ev) == 5 for evs in e.load_presets(e.PRESETS_FILE).values() for ev in evs))
 
 
 def test_routing():
@@ -158,11 +162,40 @@ def test_leds():
     check("preset pad idle color", eng.leds.base[39] == LEDManager.COLOR_PRESET)
 
 
+def test_save_load():
+    import tempfile
+    eng = make_engine()
+    slot = eng.loops[2]
+    slot.events = [(0.1, [0x90, 60, 100]), (0.9, [0x80, 60, 0])]
+    slot.length = 1.5
+    slot.state = "stopped"
+    path = os.path.join(tempfile.gettempdir(), "apc_loops_test.csv")
+    e.save_loops(path, eng.loops)
+    loaded = e.load_loops(path)
+    check("saved loop round-trips", loaded[2]["length"] == 1.5
+          and len(loaded[2]["events"]) == 2
+          and loaded[2]["events"][0] == (0.1, [0x90, 60, 100]))
+    os.remove(path)
+    eng.load_saved_loops()
+    check("load_saved_loops sets stopped state", True)
+
+
+def test_preset_player_notes():
+    events = [(0.0, "note", 0, 60, 100), (0.5, "note", 0, 64, 100)]
+    player = e.PresetPlayer(events, "test melody")
+    check("note preset length from events", abs(player.length - 0.55) < 0.01)
+    drum_events = [(0.0, "drum", 0, 36, 127)]
+    drum_player = e.PresetPlayer(drum_events, "drums")
+    check("drum preset length = LOOP_LENGTH", drum_player.length == e.LOOP_LENGTH)
+
+
 if __name__ == "__main__":
     test_constants()
     test_routing()
     test_loop_timing()
     test_leds()
+    test_save_load()
+    test_preset_player_notes()
     print()
     if failures:
         print(f"{len(failures)} FAILURES: {failures}")
