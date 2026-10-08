@@ -7,6 +7,8 @@ import time
 
 import rtmidi
 
+from apc_leds import LEDManager
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BANKS_FILE = os.path.join(BASE_DIR, "apc_banks.csv")
 DRUMS_FILE = os.path.join(BASE_DIR, "apc_drums.csv")
@@ -25,14 +27,6 @@ LOOP_NOTE_ORDER = [37 - r * 8 for r in range(5)] + [38 - r * 8 for r in range(5)
 PRESET_NOTE_ORDER = [39 - r * 8 for r in range(5)]
 ALL_PAD_NOTES = [32 - r * 8 + c for r in range(5) for c in range(8)]
 SLOT_CHANNELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15]
-
-BANK_COLOR = [25, 45, 61]
-DRUM_COLOR = 9
-COLOR_RECORDING = 3
-COLOR_PLAYING = 20
-COLOR_STOPPED = 5
-COLOR_PRESET = 57
-COLOR_OFF = 0
 
 SHIFT_SCALE_ROOT = 36
 SHIFT_SCALE_STEPS = [0, 2, 3, 5, 7, 8, 10, 12, 14, 15, 17, 19, 20, 22, 24]
@@ -116,6 +110,7 @@ class LoopSlot:
         self.index = index
         self.state = "empty"
         self.events = []
+        self.length = LOOP_LENGTH
         self.start_time = 0.0
         self.stop_flag = threading.Event()
         self.thread = None
@@ -126,6 +121,9 @@ class LoopSlot:
         self.start_time = time.monotonic()
 
     def finish_record(self):
+        if self.state != "recording":
+            return False
+        self.length = max(0.25, time.monotonic() - self.start_time)
         if self.events:
             self.state = "stopped"
             return True
@@ -157,7 +155,7 @@ class LoopSlot:
                 if self.stop_flag.is_set():
                     return
                 engine.send_synth(message)
-            if self.stop_flag.wait(max(0.0, LOOP_LENGTH - (time.monotonic() - cycle_start))):
+            if self.stop_flag.wait(max(0.0, self.length - (time.monotonic() - cycle_start))):
                 return
 
 
@@ -213,6 +211,7 @@ class Engine:
             if i < len(SHIFT_SCALE_STEPS):
                 self.note_to_scale[note] = SHIFT_SCALE_ROOT + SHIFT_SCALE_STEPS[i]
         self.midi_in = None
+        self.leds = None
         self.midi_out = rtmidi.MidiOut()
         self.midi_out.set_client_name("APC Key 25 Engine")
         self.led_out = rtmidi.MidiOut()
@@ -240,8 +239,10 @@ class Engine:
         if idx is None:
             print("No APC output port found; LED feedback disabled.")
             self.led_out = None
+            self.leds = LEDManager(None)
             return
         self.led_out.open_port(idx)
+        self.leds = LEDManager(self.led_out)
         print(f"LED output: {self.led_out.get_ports()[idx]}")
 
     def _start_fluidsynth(self):
@@ -285,34 +286,30 @@ class Engine:
             self.send_synth([0xB0 | channel, 7, scaled])
 
     def set_led(self, note, color):
-        if self.led_out is None:
-            return
-        try:
-            self.led_out.send_message([0x90, note, color])
-        except Exception:
-            pass
+        self.leds.set_base(note, color)
 
     def refresh_leds(self):
-        color = BANK_COLOR[self.bank]
+        base = LEDManager.BANK_COLORS[self.bank]
+        selected = LEDManager.BANK_SELECTED_COLORS[self.bank]
         for note in self.note_to_slot:
-            self.set_led(note, color)
+            self.leds.set_base(note, selected if note == self.selected_note else base)
         for note in self.drums:
-            self.set_led(note, DRUM_COLOR)
+            self.leds.set_base(note, LEDManager.COLOR_DRUM)
         for note, slot in self.note_to_loop.items():
             state = self.loops[slot].state
             if state == "recording":
-                self.set_led(note, COLOR_RECORDING)
+                self.leds.set_base(note, LEDManager.COLOR_RECORDING)
             elif state == "playing":
-                self.set_led(note, COLOR_PLAYING)
+                self.leds.set_base(note, LEDManager.COLOR_PLAYING)
             elif state == "stopped":
-                self.set_led(note, COLOR_STOPPED)
+                self.leds.set_base(note, LEDManager.COLOR_STOPPED)
             else:
-                self.set_led(note, COLOR_OFF)
+                self.leds.set_base(note, LEDManager.COLOR_OFF)
         for note, index in self.note_to_preset.items():
             if self.preset_players[index] is not None:
-                self.set_led(note, COLOR_PLAYING)
+                self.leds.set_base(note, LEDManager.COLOR_PLAYING)
             else:
-                self.set_led(note, COLOR_PRESET)
+                self.leds.set_base(note, LEDManager.COLOR_PRESET)
 
     def all_sounds_off(self):
         for channel in SLOT_CHANNELS + [DRUM_CHANNEL]:
@@ -349,6 +346,8 @@ class Engine:
             drum_note, name = self.drums[note]
             out_status = (0x90 if is_on else 0x80) | DRUM_CHANNEL
             self.send_synth([out_status, drum_note, velocity])
+            if is_on:
+                self.leds.flash(note, LEDManager.COLOR_DRUM_HIT)
             return
         if note in self.note_to_loop:
             if is_on:
@@ -401,6 +400,7 @@ class Engine:
         self.send_synth([0xC0 | channel, program])
         self.selected_note = note
         print(f"Bank {'ABC'[self.bank]} slot {slot + 1}: {name} (ch{channel + 1})")
+        self.refresh_leds()
 
     def _switch_bank(self, direction):
         self.bank = (self.bank + direction) % 3
