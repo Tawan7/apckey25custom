@@ -1,0 +1,8 @@
+{
+  "soundfont": "soundfonts/Live_Party_SoundFont__Techno_.sf2",
+  "bpm": 128,
+  "gain": 0.6,
+  "audio_driver": "alsa",
+  "reverb": 0.25,
+  "chorus": 0.0
+}
