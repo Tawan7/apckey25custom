@@ -24,7 +24,12 @@ LOOKAHEAD = 0.020
 
 SLOT_NOTE_ORDER = [32 - r * 8 + c for r in range(5) for c in range(4)]
 LOOP_NOTE_ORDER = [39 - r * 8 for r in range(5)]
+PRELOAD_NOTE_ORDER = [39 - r * 8 + c for r in range(5) for c in range(3, 6)]
 SLOT_CHANNELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15]
+METRONOME_CHANNEL = 12
+METRONOME_PROGRAM = 0
+METRONOME_ACCENT_NOTE = 76
+METRONOME_CLICK_NOTE = 77
 
 BANK_COLOR = [25, 45, 61]
 DRUM_COLOR = 9
@@ -214,8 +219,11 @@ class Engine:
         self.key_channel = SLOT_CHANNELS[0]
         self.clock = Clock(settings["bpm"])
         self.loops = [LoopSlot(i) for i in range(5)]
+        self.preload_slots = [LoopSlot(i) for i in range(15)]
         self.note_to_loop = {n: i for i, n in enumerate(LOOP_NOTE_ORDER)}
+        self.note_to_preload = {n: i for i, n in enumerate(PRELOAD_NOTE_ORDER)}
         self.note_to_slot = {n: i for i, n in enumerate(SLOT_NOTE_ORDER)}
+        self.metronome = False
         self.midi_in = None
         self.led_out = None
         self.running = True
@@ -223,6 +231,7 @@ class Engine:
         self._open_input()
         self._open_led_output()
         self._init_synth()
+        self._init_metronome()
         self.scheduler.start()
         self.refresh_leds()
 
@@ -273,6 +282,23 @@ class Engine:
         self.send_synth([0xC0 | channel, program])
         self.selected_note = SLOT_NOTE_ORDER[0]
         print(f"Ready: keys play '{name}' (slot 1, bank A)")
+
+    def _init_metronome(self):
+        self.send_synth([0xC0 | METRONOME_CHANNEL, METRONOME_PROGRAM])
+        self.send_synth([0xB0 | METRONOME_CHANNEL, 7, 64])
+
+    def _toggle_metronome(self):
+        self.metronome = not self.metronome
+        print(f"Metronome: {'ON' if self.metronome else 'OFF'}")
+        if self.metronome:
+            self._click_beat = int(self.clock.now())
+
+    def _stop_all(self):
+        for slot in self.loops + self.preload_slots:
+            if slot.state == "playing":
+                slot.stop_playback()
+        print("Stop all: every loop stopped")
+        self.refresh_leds()
 
     def _setting(self, name, value):
         setter = getattr(self.synth, "setting", None)
@@ -330,7 +356,15 @@ class Engine:
     def _schedule(self):
         while self.running:
             now_beat = self.clock.now()
-            for slot in self.loops:
+            if self.metronome:
+                current = int(now_beat)
+                last = getattr(self, "_click_beat", current - 1)
+                if current != last:
+                    self._click_beat = current
+                    note = METRONOME_ACCENT_NOTE if current % BEATS_PER_BAR == 0 else METRONOME_CLICK_NOTE
+                    self.send_synth([0x90 | METRONOME_CHANNEL, note, 100])
+                    self.send_synth([0x80 | METRONOME_CHANNEL, note, 0])
+            for slot in self.loops + self.preload_slots:
                 if slot.state != "playing":
                     continue
                 elapsed = now_beat - slot.start_beat
@@ -370,6 +404,10 @@ class Engine:
             return
         if channel != 0:
             return
+        if self.shift_held and note in self.note_to_preload:
+            if is_on:
+                self._handle_preload_press(note)
+            return
         if note in self.note_to_slot:
             if is_on:
                 self._select_instrument(note)
@@ -385,6 +423,10 @@ class Engine:
                 self._switch_bank(1 if note == 65 else -1)
             elif note == 91 and is_on:
                 self._toggle_transport()
+            elif note == 81 and is_on:
+                self._stop_all()
+            elif note == 93 and is_on:
+                self._toggle_metronome()
             elif note == 98:
                 self.shift_held = is_on
 
@@ -397,6 +439,18 @@ class Engine:
             if slot.state == "recording":
                 slot.events.append((round((now_beat - slot.start_beat) * 16) / 16.0
                                     % slot.length_beats, message))
+
+    def _handle_preload_press(self, note):
+        slot = self.preload_slots[self.note_to_preload[note]]
+        if slot.state == "empty":
+            print(f"Preload {slot.index + 1}: empty (set it in apcv2_preload.json)")
+            return
+        if slot.state == "playing":
+            slot.stop_playback()
+            print(f"Preload {slot.index + 1}: stopped")
+        else:
+            slot.start_playback(self.clock.next_bar_beat())
+            print(f"Preload {slot.index + 1}: starts on next bar")
 
     def _select_instrument(self, note):
         slot = self.note_to_slot[note]
@@ -485,17 +539,32 @@ class Engine:
         elif fn == "knob_pan":
             target = (int(action["param1"]) - 1) & 0x0F
             self.send_synth([0xB0 | target, 10, value])
+        elif fn == "knob_filter":
+            for channel in SLOT_CHANNELS:
+                self.send_synth([0xB0 | channel, 74, value])
+            print(f"Master filter cutoff: {value}")
+        elif fn == "knob_reverb":
+            self._setting("synth.reverb.level", value / 127.0 * 1.0)
+        elif fn == "knob_chorus":
+            self._setting("synth.chorus.level", value / 127.0)
+        elif fn == "knob_master":
+            try:
+                self.synth.setting("synth.gain", 2.5 * value / 127.0)
+            except Exception:
+                pass
 
-    def load_loop_file(self, slot_index, path):
+    def load_loop_file_into(self, slot, path):
         events, length = load_midi_loop(path)
         if not events:
-            print(f"Loop {slot_index + 1}: no notes in {path}")
+            print(f"Loop {slot.index + 1}: no notes in {path}")
             return False
-        self.loops[slot_index].load_events(events, length)
-        print(f"Loop {slot_index + 1}: loaded {path} "
+        slot.load_events(events, length)
+        print(f"Slot {slot.index + 1}: loaded {path} "
               f"({len(events)} events, {length // BEATS_PER_BAR} bars)")
-        self.refresh_leds()
         return True
+
+    def load_loop_file(self, slot_index, path):
+        return self.load_loop_file_into(self.loops[slot_index], path)
 
     def close(self):
         self.running = False
@@ -506,6 +575,28 @@ class Engine:
         self.midi_in.close_port()
         time.sleep(0.2)
         self.synth.delete()
+
+
+def load_preload_manifest(engine):
+    path = os.path.join(BASE_DIR, "apcv2_preload.json")
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        manifest = json.load(f)
+    for key, src in manifest.items():
+        try:
+            slot = int(key) - 1
+        except ValueError:
+            print(f"Ignoring bad preload slot '{key}'")
+            continue
+        if not 0 <= slot < 15:
+            print(f"Preload slot {key} out of range 1-15")
+            continue
+        resolved = src if os.path.exists(src) else os.path.join(BASE_DIR, src)
+        if os.path.exists(resolved):
+            engine.load_loop_file_into(engine.preload_slots[slot], resolved)
+        else:
+            print(f"Preload file missing: {src}")
 
 
 def load_loop_manifest(engine):
@@ -548,6 +639,7 @@ def main():
     engine = Engine(settings, banks, drums, cc_actions)
     try:
         load_loop_manifest(engine)
+        load_preload_manifest(engine)
         for slot, path in (args.load or []):
             engine.load_loop_file(int(slot) - 1, path)
         print("Pads cols 1-4 = instruments, cols 5-7 = drums, col 8 = loops. "

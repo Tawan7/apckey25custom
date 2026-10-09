@@ -66,3 +66,7 @@ Knob 7,CC,0,54,reserved,,
 Knob 8,CC,0,55,reserved,,
 Sustain,CC,1,64,sustain,,
 
+Knob 5,CC,0,52,knob_filter,74,Master filter cutoff
+Knob 6,CC,0,53,knob_reverb,91,Reverb amount
+Knob 7,CC,0,54,knob_chorus,93,Chorus amount
+Knob 8,CC,0,55,knob_master,7,Master volume
