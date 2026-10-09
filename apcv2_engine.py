@@ -260,8 +260,11 @@ class Engine:
         self.synth = fluidsynth.Synth(gain=self.settings["gain"])
         self.synth.start(driver=self.settings["audio_driver"])
         self.sfid = self.synth.sfload(soundfont, 1)
-        self.synth.reverb(0, self.settings["reverb"], 0, 1)
-        self.synth.chorus(0, self.settings["chorus"], 0, 0, 0, 0)
+        if hasattr(self.synth, "reverb"):
+            self.synth.reverb(0, self.settings["reverb"], 0, 1)
+        else:
+            self._setting("synth.reverb.level", float(self.settings["reverb"]))
+            self._setting("synth.chorus.level", float(self.settings["chorus"]))
         print(f"Soundfont: {soundfont}")
         for channel in SLOT_CHANNELS:
             self.send_synth([0xB0 | channel, 7, 100])
@@ -270,6 +273,16 @@ class Engine:
         self.send_synth([0xC0 | channel, program])
         self.selected_note = SLOT_NOTE_ORDER[0]
         print(f"Ready: keys play '{name}' (slot 1, bank A)")
+
+    def _setting(self, name, value):
+        setter = getattr(self.synth, "setting", None)
+        if setter is None:
+            print(f"Cannot set {name}={value} (no settings API)")
+            return
+        try:
+            setter(name, value)
+        except Exception as exc:
+            print(f"Cannot set {name}={value}: {exc}")
 
     def send_synth(self, message):
         status = message[0] & 0xF0
