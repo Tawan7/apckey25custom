@@ -408,9 +408,14 @@ class Engine:
         if note in self.drums:
             drum_note, name = self.drums[note]
             out_status = (0x90 if is_on else 0x80) | DRUM_CHANNEL
-            self.send_synth([out_status, drum_note, velocity])
+            message = [out_status, drum_note, velocity]
+            self.send_synth(message)
             if is_on:
                 self.leds.flash(note, LEDManager.COLOR_DRUM_HIT)
+            now = time.monotonic()
+            for slot in self.loops:
+                if slot.state == "recording":
+                    slot.events.append((now - slot.start_time, message))
             return
         if note in self.note_to_loop:
             if is_on:
