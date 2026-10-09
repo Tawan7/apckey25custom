@@ -24,7 +24,7 @@ LOOKAHEAD = 0.020
 
 SLOT_NOTE_ORDER = [32 - r * 8 + c for r in range(5) for c in range(4)]
 LOOP_NOTE_ORDER = [39 - r * 8 for r in range(5)]
-PRELOAD_NOTE_ORDER = [39 - r * 8 + c for r in range(5) for c in range(3, 6)]
+PRELOAD_NOTE_ORDER = [c - r * 8 for r in range(5) for c in (36, 37, 38)]
 SLOT_CHANNELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15]
 METRONOME_CHANNEL = 12
 METRONOME_PROGRAM = 0
