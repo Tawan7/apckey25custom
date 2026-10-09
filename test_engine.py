@@ -91,6 +91,20 @@ def test_constants():
           all(len(ev) == 5 for evs in e.load_presets(e.PRESETS_FILE).values() for ev in evs))
 
 
+def test_drum_recording():
+    eng = make_engine()
+    eng._handle_note(0, 37, True, 127)
+    check("loop recording started", eng.loops[0].state == "recording")
+    eng._handle_note(0, 36, True, 100)
+    eng._handle_note(0, 36, False, 0)
+    eng._handle_note(0, 28, True, 100)
+    evs = eng.loops[0].events
+    check("drum on/off/on recorded into loop", len(evs) == 3)
+    check("kick note on recorded", evs[0][1] == [0x99, 36, 100])
+    check("kick note off recorded", evs[1][1] == [0x89, 36, 0])
+    check("snare note on recorded", evs[2][1] == [0x99, 38, 100])
+
+
 def test_routing():
     eng = make_engine()
     eng._handle_note(0, 32, True, 127)
