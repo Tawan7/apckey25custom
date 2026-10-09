@@ -2,43 +2,33 @@ bank,note,channel,program,name
 0,32,0,38,Synth Bass 1
 0,33,1,39,Synth Bass 2
 0,34,2,33,Finger Bass
-0,35,3,34,Electric Bass
-0,24,4,37,Slap Bass
-0,25,5,86,Synth Bass 5
-0,26,6,44,Contrabass
-0,27,7,30,Overdriven Guitar
-0,16,8,31,Distortion Guitar
-0,17,10,120,Reverse Cymbal
-0,18,11,70,Bassoon
-0,19,12,90,Synth Bass 3
-0,8,13,92,Analog Pad
-0,9,14,109,Kalimba
-0,10,15,118,Melodic Tom
-0,11,0,81,Square Lead
-0,0,1,80,Saw Lead
-0,1,2,49,Bass + Lead
-0,2,3,95,Voice Pad
-0,3,4,99,FX Atmo
+0,35,3,37,Slap Bass
+0,24,4,86,Synth Bass 5
+0,25,5,44,Contrabass
+0,26,6,30,Overdriven Guitar
+0,27,7,31,Distortion Guitar
+0,16,8,120,Reverse Cymbal
+0,17,10,90,Synth Bass 3
+0,18,11,92,Analog Pad
+0,19,12,118,Melodic Tom
+0,8,13,80,Saw Lead
+0,9,14,49,Bass + Lead
+0,10,15,99,FX Atmo
 1,32,0,92,Analog Pad
 1,33,1,89,Warm Pad
-1,34,2,93,Synth Pad 1
-1,35,3,48,Strings
-1,24,4,49,Strings 2
-1,25,5,50,Synth Strings 1
-1,26,6,51,Synth Strings 2
-1,27,7,52,Choir Aahs
-1,16,8,95,Voice Pad
-1,17,10,93,Bowed Glass
-1,18,11,99,Crystal
-1,19,12,98,Soundtrack
-1,8,13,100,Atmospheric
-1,9,14,101,Brightness
-1,10,15,102,Goblin
-1,11,0,103,Echoes
-1,0,1,104,Sci-Fi
-1,1,2,105,Sitar
-1,2,3,108,Koto
-1,3,4,111,Shanai
+1,34,2,48,Strings
+1,35,3,49,Strings 2
+1,24,4,50,Synth Strings 1
+1,25,5,51,Synth Strings 2
+1,26,6,52,Choir Aahs
+1,27,7,95,Voice Pad
+1,16,8,93,Bowed Glass
+1,17,10,99,Crystal
+1,18,11,98,Soundtrack
+1,19,12,100,Atmospheric
+1,8,13,102,Goblin
+1,9,14,103,Echoes
+1,10,15,104,Sci-Fi
 2,32,0,80,Saw Lead
 2,33,1,81,Square Lead
 2,34,2,82,Calliope Lead
@@ -50,12 +40,7 @@ bank,note,channel,program,name
 2,16,8,88,Fantasia
 2,17,10,89,Warm Pad
 2,18,11,65,Saxophone
-2,19,12,57,Trumpet
-2,8,13,58,Trombone
-2,9,14,59,Tuba
-2,10,15,70,English Horn
-2,11,0,69,Oboe
-2,0,1,72,Clarinet
-2,1,2,20,Pipe Organ
-2,2,3,52,Choir Aahs
-2,3,4,17,Reed Organ
+2,19,12,58,Trombone
+2,8,13,59,Tuba
+2,9,14,20,Pipe Organ
+2,10,15,52,Choir Aahs

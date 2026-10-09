@@ -81,11 +81,19 @@ def make_engine():
 def test_constants():
     check("10 loop slots", len(e.LOOP_NOTE_ORDER) == 10)
     check("5 preset slots", len(e.PRESET_NOTE_ORDER) == 5)
-    check("20 instrument slots", len(e.SLOT_NOTE_ORDER) == 20)
+    check("15 instrument slots", len(e.SLOT_NOTE_ORDER) == 15)
+    banks = e.load_banks(e.BANKS_FILE)
+    for bank in (0, 1, 2):
+        chans = [banks[(bank, n)][0] for n in e.SLOT_NOTE_ORDER]
+        check(f"bank {bank} channels all unique", len(set(chans)) == 15)
     check("5 drum pads", len(e.load_drums(e.DRUMS_FILE)) == 5)
     all_pads = (set(e.LOOP_NOTE_ORDER) | set(e.PRESET_NOTE_ORDER)
                 | set(e.SLOT_NOTE_ORDER) | set(e.DRUM_NOTE_ORDER))
-    check("all 40 pads mapped once", len(all_pads) == 40)
+    check("35 pads mapped, no overlap", len(all_pads) == 35)
+    unused = [32 - r * 8 + c for r in range(5) for c in range(4)] + [32 - r * 8 for r in range(5)]
+    unused = set(unused) - all_pads
+    check("5 unused instrument pads are rows 4-5 cols 1-4 leftovers",
+          unused == {11, 0, 1, 2, 3})
     check("5 presets loaded", len(e.load_presets(e.PRESETS_FILE)) == 5)
     check("preset events carry kind/channel",
           all(len(ev) == 5 for evs in e.load_presets(e.PRESETS_FILE).values() for ev in evs))

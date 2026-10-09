@@ -22,7 +22,7 @@ LOOP_LENGTH = 4.0
 LOOP_SLOTS = 10
 PRESET_COUNT = 5
 
-SLOT_NOTE_ORDER = [32 - r * 8 + c for r in range(5) for c in range(4)]
+SLOT_NOTE_ORDER = [32, 33, 34, 35, 24, 25, 26, 27, 16, 17, 18, 19, 8, 9, 10]
 DRUM_NOTE_ORDER = [36 - r * 8 for r in range(5)]
 LOOP_NOTE_ORDER = [37 - r * 8 for r in range(5)] + [38 - r * 8 for r in range(5)]
 PRESET_NOTE_ORDER = [39 - r * 8 for r in range(5)]
