@@ -1,0 +1,61 @@
+bank,note,program,name
+0,32,38,Synth Bass 1
+0,33,39,Synth Bass 2
+0,34,33,Finger Bass
+0,35,34,Electric Bass
+0,24,37,Slap Bass
+0,25,81,Square Lead
+0,26,80,Saw Lead
+0,27,88,Synth Pad
+0,16,95,Voice Pad
+0,17,99,FX Atmo
+0,18,92,Crystal
+0,19,48,Strings
+0,8,49,Strings 2
+0,9,50,Synth Strings
+0,10,4,Electric Piano
+0,11,30,Distortion Guitar
+0,0,32,Guitar Harmonics
+0,1,28,Muted Guitar
+0,2,26,Jazz Guitar
+0,3,61,Brass Section
+1,32,0,Acoustic Piano
+1,33,1,Electric Piano 2
+1,34,4,Electric Piano
+1,35,6,Harpsichord
+1,24,11,Vibraphone
+1,25,12,Marimba
+1,26,19,Church Organ
+1,27,24,Nylon Guitar
+1,16,27,Electric Guitar
+1,17,29,Overdriven Guitar
+1,18,52,Choir Aahs
+1,19,56,Trumpet
+1,8,66,Alto Sax
+1,9,80,Saw Lead
+1,10,81,Square Lead
+1,11,88,Synth Pad
+1,0,92,Crystal
+1,1,95,Voice Pad
+1,2,99,FX Atmo
+1,3,61,Brass Section
+2,32,48,Strings
+2,33,49,Strings 2
+2,34,50,Synth Strings
+2,35,51,Synth Lead 2
+2,24,52,Choir Aahs
+2,25,53,Choir Pad
+2,26,54,Voice Oohs
+2,27,55,Synth Voice
+2,16,56,Trumpet
+2,17,57,Tubular Bells
+2,18,98,FX Bright
+2,19,99,FX Atmo
+2,8,100,Atmosphere
+2,9,101,Brightness
+2,10,102,Goblins
+2,11,103,Echoes
+2,0,104,Sci-Fi
+2,1,105,Sitar
+2,2,88,Synth Pad
+2,3,95,Voice Pad
