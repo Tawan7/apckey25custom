@@ -2,15 +2,5 @@ note,drum_note,name
 36,36,Kick
 28,38,Snare
 20,42,Closed Hat
-12,46,Open Hat
-4,51,Ride
-37,39,Clap
-29,54,Tambourine
-21,55,Crash
-13,56,Cowbell
-5,58,Vibraslap
-38,60,Conga High
-30,62,Conga Mid
-22,64,Conga Low
-14,65,Timbale High
-6,66,Timbale Low
+12,39,Clap
+4,46,Open Hat

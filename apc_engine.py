@@ -7,26 +7,31 @@ import time
 
 import rtmidi
 
+from apc_leds import LEDManager
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BANKS_FILE = os.path.join(BASE_DIR, "apc_banks.csv")
 DRUMS_FILE = os.path.join(BASE_DIR, "apc_drums.csv")
+PRESETS_FILE = os.path.join(BASE_DIR, "apc_presets.csv")
 CC_CONFIG_FILE = os.path.join(BASE_DIR, "apc_config.csv")
+LOOPS_FILE = os.path.join(BASE_DIR, "apc_loops.csv")
 
 KEYS_INPUT_CHANNEL = 1
 DRUM_CHANNEL = 9
 LOOP_LENGTH = 4.0
-LOOP_SLOTS = 5
+LOOP_SLOTS = 10
+PRESET_COUNT = 5
 
-SLOT_NOTE_ORDER = [32 - r * 8 + c for r in range(5) for c in range(4)]
-LOOP_NOTE_ORDER = [39 - r * 8 for r in range(5)]
+SLOT_NOTE_ORDER = [32, 33, 34, 35, 24, 25, 26, 27, 16, 17, 18, 19, 8, 9, 10]
+DRUM_NOTE_ORDER = [36 - r * 8 for r in range(5)]
+LOOP_NOTE_ORDER = [37 - r * 8 for r in range(5)] + [38 - r * 8 for r in range(5)]
+PRESET_NOTE_ORDER = [39 - r * 8 for r in range(5)]
+ALL_PAD_NOTES = [32 - r * 8 + c for r in range(5) for c in range(8)]
 SLOT_CHANNELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15]
 
-BANK_COLOR = [25, 45, 61]
-DRUM_COLOR = 9
-COLOR_RECORDING = 3
-COLOR_PLAYING = 20
-COLOR_STOPPED = 5
-COLOR_OFF = 0
+SHIFT_SCALE_ROOT = 36
+SHIFT_SCALE_STEPS = [0, 2, 3, 5, 7, 8, 10, 12, 14, 15, 17, 19, 20, 22, 24]
+SHIFT_NOTE_PADS = SLOT_NOTE_ORDER + DRUM_NOTE_ORDER
 
 SOUNDFONT_CANDIDATES = [
     "/usr/share/sounds/sf2/FluidR3_GM.sf2",
@@ -35,17 +40,17 @@ SOUNDFONT_CANDIDATES = [
     "/usr/share/soundfonts/default-GM.sf2",
 ]
 
+REVERB_KNOB_CC = 52
+MAIN_VOLUME_KNOB_CC = 53
+
 
 def load_banks(path):
     slots = {}
-    order = []
     with open(path, newline="") as f:
         for row in csv.DictReader(f):
             key = (int(row["bank"]), int(row["note"]))
             slots[key] = (int(row["channel"]), int(row["program"]), row["name"])
-            if int(row["note"]) not in order:
-                order.append(int(row["note"]))
-    return slots, sorted(order, reverse=True)
+    return slots
 
 
 def load_drums(path):
@@ -54,6 +59,57 @@ def load_drums(path):
         for row in csv.DictReader(f):
             drums[int(row["note"])] = (int(row["drum_note"]), row["name"])
     return drums
+
+
+def load_presets(path):
+    """Unified preset format: drum hits and melodic notes share one table.
+
+    Columns: preset, name, offset, kind (drum|note), channel, note, velocity.
+    `offset` is 0.0-1.0 of the loop for drums, seconds for note presets.
+    Legacy files without `kind` are treated as drum patterns.
+    """
+    presets = {}
+    if not os.path.exists(path):
+        return presets
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            key = int(row["preset"])
+            kind = row.get("kind") or "drum"
+            note = row.get("note") or row.get("drum_note") or "0"
+            note = int(note)
+            events = [(float(row["offset"]), kind,
+                       int(row.get("channel", 0)), note,
+                       int(row["velocity"]))]
+            presets.setdefault(key, []).extend(events)
+    for key in presets:
+        presets[key].sort(key=lambda ev: ev[0])
+    return presets
+
+
+def load_loops(path):
+    """Saved loops: slot, length, offset_seconds, message (space-separated bytes)."""
+    loops = {}
+    if not os.path.exists(path):
+        return loops
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            slot = int(row["slot"])
+            message = [int(b) for b in row["message"].split()]
+            loops.setdefault(slot, {"length": float(row["length"]), "events": []})
+            loops[slot]["events"].append((float(row["offset"]), message))
+    return loops
+
+
+def save_loops(path, loop_slots):
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["slot", "length", "offset", "message"])
+        for slot in loop_slots:
+            if slot.state == "empty" or not slot.events:
+                continue
+            for offset, message in slot.events:
+                writer.writerow([slot.index, f"{slot.length:.3f}",
+                                  f"{offset:.3f}", " ".join(str(b) for b in message)])
 
 
 def load_cc_config(path):
@@ -96,6 +152,7 @@ class LoopSlot:
         self.index = index
         self.state = "empty"
         self.events = []
+        self.length = LOOP_LENGTH
         self.start_time = 0.0
         self.stop_flag = threading.Event()
         self.thread = None
@@ -106,6 +163,9 @@ class LoopSlot:
         self.start_time = time.monotonic()
 
     def finish_record(self):
+        if self.state != "recording":
+            return False
+        self.length = max(0.25, time.monotonic() - self.start_time)
         if self.events:
             self.state = "stopped"
             return True
@@ -137,24 +197,83 @@ class LoopSlot:
                 if self.stop_flag.is_set():
                     return
                 engine.send_synth(message)
-            if self.stop_flag.wait(max(0.0, LOOP_LENGTH - (time.monotonic() - cycle_start))):
+            if self.stop_flag.wait(max(0.0, self.length - (time.monotonic() - cycle_start))):
+                return
+
+
+class PresetPlayer:
+    """Plays a preset: drum events use offset 0.0-1.0 of LOOP_LENGTH,
+    note events use absolute seconds. Length comes from the preset itself
+    (LOOP_LENGTH for drum patterns, max note offset for melodies)."""
+
+    def __init__(self, events, name, length=None):
+        self.name = name
+        self.events = events
+        kinds = {kind for _, kind, _, _, _ in events}
+        if length is None:
+            if kinds == {"drum"}:
+                length = LOOP_LENGTH
+            else:
+                length = max((at for at, kind, _, _, _ in events
+                              if kind == "note"), default=LOOP_LENGTH) + 0.05
+        self.length = length
+        self.stop_flag = threading.Event()
+        self.thread = None
+
+    def start(self, send):
+        self.stop_flag.clear()
+        self.thread = threading.Thread(target=self._run, args=(send,), daemon=True)
+        self.thread.start()
+
+    def stop(self):
+        self.stop_flag.set()
+
+    def _run(self, send):
+        while not self.stop_flag.is_set():
+            cycle_start = time.monotonic()
+            for at, kind, channel, note, velocity in self.events:
+                if kind == "drum":
+                    delay = at * LOOP_LENGTH - (time.monotonic() - cycle_start)
+                    if delay > 0 and self.stop_flag.wait(delay):
+                        return
+                    if self.stop_flag.is_set():
+                        return
+                    send([0x90 | DRUM_CHANNEL, note, velocity])
+                    send([0x80 | DRUM_CHANNEL, note, 0])
+                else:
+                    delay = at - (time.monotonic() - cycle_start)
+                    if delay > 0 and self.stop_flag.wait(delay):
+                        return
+                    if self.stop_flag.is_set():
+                        return
+                    send([0x90 | channel, note, velocity])
+            if self.stop_flag.wait(max(0.0, self.length - (time.monotonic() - cycle_start))):
                 return
 
 
 class Engine:
-    def __init__(self, banks, bank_order, drums, cc_actions):
+    def __init__(self, banks, drums, presets, cc_actions):
         self.banks = banks
-        self.bank_order = bank_order
         self.drums = drums
+        self.channel_volume = {c: 100 for c in SLOT_CHANNELS + [DRUM_CHANNEL]}
+        self.main_volume_value = 100
+        self.presets = presets
         self.cc_actions = cc_actions
         self.bank = 0
         self.shift_held = False
         self.selected_note = None
         self.key_channel = SLOT_CHANNELS[0]
         self.loops = [LoopSlot(i) for i in range(LOOP_SLOTS)]
+        self.preset_players = [None] * PRESET_COUNT
         self.note_to_loop = {n: i for i, n in enumerate(LOOP_NOTE_ORDER)}
+        self.note_to_preset = {n: i for i, n in enumerate(PRESET_NOTE_ORDER)}
         self.note_to_slot = {n: i for i, n in enumerate(SLOT_NOTE_ORDER)}
+        self.note_to_scale = {}
+        for i, note in enumerate(SHIFT_NOTE_PADS):
+            if i < len(SHIFT_SCALE_STEPS):
+                self.note_to_scale[note] = SHIFT_SCALE_ROOT + SHIFT_SCALE_STEPS[i]
         self.midi_in = None
+        self.leds = None
         self.midi_out = rtmidi.MidiOut()
         self.midi_out.set_client_name("APC Key 25 Engine")
         self.led_out = rtmidi.MidiOut()
@@ -163,6 +282,7 @@ class Engine:
         self._open_output()
         self._open_led_output()
         self._init_synth()
+        self.load_saved_loops()
         self.refresh_leds()
 
     def _open_output(self):
@@ -182,8 +302,10 @@ class Engine:
         if idx is None:
             print("No APC output port found; LED feedback disabled.")
             self.led_out = None
+            self.leds = LEDManager(None)
             return
         self.led_out.open_port(idx)
+        self.leds = LEDManager(self.led_out)
         print(f"LED output: {self.led_out.get_ports()[idx]}")
 
     def _start_fluidsynth(self):
@@ -202,9 +324,9 @@ class Engine:
         return None
 
     def _init_synth(self):
-        for channel in SLOT_CHANNELS:
+        for channel in SLOT_CHANNELS + [DRUM_CHANNEL]:
             self.send_synth([0xB0 | channel, 7, 100])
-        self.send_synth([0xB0 | DRUM_CHANNEL, 7, 100])
+        self.set_reverb(64)
         channel, program, name = self.banks[(0, SLOT_NOTE_ORDER[0])]
         self.send_synth([0xC0 | channel, program])
         self.selected_note = SLOT_NOTE_ORDER[0]
@@ -213,30 +335,44 @@ class Engine:
     def send_synth(self, message):
         self.midi_out.send_message(message)
 
+    def set_reverb(self, value):
+        amount = int(value * 40 / 127)
+        depth = int(value * 100 / 127)
+        self.send_synth([0xB0, 91, amount])
+        for channel in SLOT_CHANNELS + [DRUM_CHANNEL]:
+            self.send_synth([0xB0 | channel, 91, depth])
+
+    def set_main_volume(self, value):
+        self.main_volume_value = value
+        for channel, vol in self.channel_volume.items():
+            scaled = vol * value // 127
+            self.send_synth([0xB0 | channel, 7, scaled])
+
     def set_led(self, note, color):
-        if self.led_out is None:
-            return
-        try:
-            self.led_out.send_message([0x90, note, color])
-        except Exception:
-            pass
+        self.leds.set_base(note, color)
 
     def refresh_leds(self):
-        color = BANK_COLOR[self.bank]
+        base = LEDManager.BANK_COLORS[self.bank]
+        selected = LEDManager.BANK_SELECTED_COLORS[self.bank]
         for note in self.note_to_slot:
-            self.set_led(note, color)
+            self.leds.set_base(note, selected if note == self.selected_note else base)
         for note in self.drums:
-            self.set_led(note, DRUM_COLOR)
+            self.leds.set_base(note, LEDManager.COLOR_DRUM)
         for note, slot in self.note_to_loop.items():
             state = self.loops[slot].state
             if state == "recording":
-                self.set_led(note, COLOR_RECORDING)
+                self.leds.set_base(note, LEDManager.COLOR_RECORDING)
             elif state == "playing":
-                self.set_led(note, COLOR_PLAYING)
+                self.leds.set_base(note, LEDManager.COLOR_PLAYING)
             elif state == "stopped":
-                self.set_led(note, COLOR_STOPPED)
+                self.leds.set_base(note, LEDManager.COLOR_STOPPED)
             else:
-                self.set_led(note, COLOR_OFF)
+                self.leds.set_base(note, LEDManager.COLOR_OFF)
+        for note, index in self.note_to_preset.items():
+            if self.preset_players[index] is not None:
+                self.leds.set_base(note, LEDManager.COLOR_PLAYING)
+            else:
+                self.leds.set_base(note, LEDManager.COLOR_PRESET)
 
     def all_sounds_off(self):
         for channel in SLOT_CHANNELS + [DRUM_CHANNEL]:
@@ -260,29 +396,48 @@ class Engine:
         if channel == KEYS_INPUT_CHANNEL:
             self._handle_key(note, is_on, velocity)
             return
-        if channel == 0 and note in self.note_to_slot:
+        if channel != 0:
+            return
+        if self.shift_held and note in self.note_to_scale:
+            self._handle_shift_note(note, is_on, velocity)
+            return
+        if note in self.note_to_slot:
             if is_on:
                 self._select_instrument(note)
             return
-        if channel == 0 and note in self.drums:
+        if note in self.drums:
             drum_note, name = self.drums[note]
             out_status = (0x90 if is_on else 0x80) | DRUM_CHANNEL
-            self.send_synth([out_status, drum_note, velocity])
+            message = [out_status, drum_note, velocity]
+            self.send_synth(message)
+            if is_on:
+                self.leds.flash(note, LEDManager.COLOR_DRUM_HIT)
+            now = time.monotonic()
+            for slot in self.loops:
+                if slot.state == "recording":
+                    slot.events.append((now - slot.start_time, message))
             return
-        if channel == 0 and note in self.note_to_loop:
+        if note in self.note_to_loop:
             if is_on:
                 self._handle_loop_press(note)
             return
-        if channel == 0:
-            if note in (64, 65) and is_on:
-                self._switch_bank(1 if note == 65 else -1)
-            elif note == 91 and is_on:
-                self._toggle_transport()
-            elif note == 98:
-                self.shift_held = is_on
-                print("Shift: held" if is_on else "Shift: released")
-            elif is_on and note in (66, 67, 68, 69, 70, 71, 81, 82, 83, 84, 85, 86, 93):
-                print(f"Button {note}: reserved")
+        if note in self.note_to_preset:
+            if is_on:
+                self._handle_preset_press(note)
+            return
+        if note in (64, 65) and is_on:
+            self._switch_bank(1 if note == 65 else -1)
+        elif note == 91 and is_on:
+            self._toggle_transport()
+        elif note == 93 and is_on:
+            self.save_all_loops()
+        elif note == 98:
+            self.shift_held = is_on
+            if not is_on:
+                self._release_all_shift_notes()
+            print("Shift: held" if is_on else "Shift: released")
+        elif is_on and note in (66, 67, 68, 69, 70, 71, 81, 82, 83, 84, 85, 86):
+            print(f"Button {note}: reserved")
 
     def _handle_key(self, note, is_on, velocity):
         out_status = (0x90 if is_on else 0x80) | self.key_channel
@@ -293,6 +448,21 @@ class Engine:
             if slot.state == "recording":
                 slot.events.append((now - slot.start_time, message))
 
+    def _handle_shift_note(self, pad_note, is_on, velocity):
+        note = self.note_to_scale[pad_note]
+        out_status = (0x90 if is_on else 0x80) | self.key_channel
+        message = [out_status, note, velocity]
+        self.send_synth(message)
+        now = time.monotonic()
+        for slot in self.loops:
+            if slot.state == "recording":
+                slot.events.append((now - slot.start_time, message))
+
+    def _release_all_shift_notes(self):
+        for pad_note in self.note_to_scale:
+            note = self.note_to_scale[pad_note]
+            self.send_synth([0x80 | self.key_channel, note, 0])
+
     def _select_instrument(self, note):
         slot = self.note_to_slot[note]
         channel, program, name = self.banks[(self.bank, note)]
@@ -300,6 +470,7 @@ class Engine:
         self.send_synth([0xC0 | channel, program])
         self.selected_note = note
         print(f"Bank {'ABC'[self.bank]} slot {slot + 1}: {name} (ch{channel + 1})")
+        self.refresh_leds()
 
     def _switch_bank(self, direction):
         self.bank = (self.bank + direction) % 3
@@ -339,11 +510,53 @@ class Engine:
             print(f"Loop {slot.index + 1}: nothing recorded")
         self.refresh_leds()
 
+    def _handle_preset_press(self, note):
+        index = self.note_to_preset[note]
+        player = self.preset_players[index]
+        if player is not None:
+            player.stop()
+            self.preset_players[index] = None
+            print(f"Preset {index + 1}: stopped")
+        else:
+            events = self.presets.get(index + 1, [])
+            if not events:
+                print(f"Preset {index + 1}: no pattern defined")
+                return
+            name = PRESET_NAMES.get(index + 1, f"Preset {index + 1}")
+            player = PresetPlayer(events, name)
+            self.preset_players[index] = player
+            player.start(self.send_synth)
+            print(f"Preset {index + 1}: {name} playing")
+        self.refresh_leds()
+
+    def save_all_loops(self):
+        save_loops(LOOPS_FILE, self.loops)
+        count = sum(1 for s in self.loops if s.events)
+        print(f"Saved {count} loops to {os.path.basename(LOOPS_FILE)}")
+
+    def load_saved_loops(self):
+        saved = load_loops(LOOPS_FILE)
+        for slot, data in saved.items():
+            if slot >= LOOP_SLOTS:
+                continue
+            self.loops[slot].events = data["events"]
+            self.loops[slot].length = data["length"]
+            self.loops[slot].state = "stopped"
+        if saved:
+            print(f"Loaded {len(saved)} saved loops from {os.path.basename(LOOPS_FILE)}")
+        self.refresh_leds()
+
     def _toggle_transport(self):
-        if any(s.state == "playing" for s in self.loops):
-            for slot in self.loops:
-                if slot.state == "playing":
-                    slot.stop_playback()
+        stopped_any = False
+        for slot in self.loops:
+            if slot.state == "playing":
+                slot.stop_playback()
+                stopped_any = True
+        for player in self.preset_players:
+            if player is not None:
+                player.stop()
+        self.preset_players = [None] * PRESET_COUNT
+        if stopped_any:
             print("Transport: STOP")
         else:
             started = False
@@ -355,6 +568,14 @@ class Engine:
         self.refresh_leds()
 
     def _handle_cc(self, channel, controller, value):
+        if controller == REVERB_KNOB_CC:
+            self.set_reverb(value)
+            print(f"Reverb: {value}")
+            return
+        if controller == MAIN_VOLUME_KNOB_CC:
+            self.set_main_volume(value)
+            print(f"Main volume: {value}")
+            return
         action = self.cc_actions.get((channel, controller))
         if action is None:
             return
@@ -363,7 +584,8 @@ class Engine:
             self.send_synth([0xB0 | self.key_channel, 64, value])
         elif fn == "knob_volume":
             target = (int(action["param1"]) - 1) & 0x0F
-            self.send_synth([0xB0 | target, 7, value])
+            self.channel_volume[target] = value
+            self.send_synth([0xB0 | target, 7, value * self.main_volume_value // 127])
             print(f"Volume ch{action['param1']}: {value}")
         elif fn == "knob_pan":
             target = (int(action["param1"]) - 1) & 0x0F
@@ -382,12 +604,22 @@ class Engine:
                 self._synth_process.wait()
 
 
+PRESET_NAMES = {
+    1: "Four on Floor",
+    2: "Hypnotic",
+    3: "Offbeat",
+    4: "Rolling",
+    5: "Break",
+}
+
+
 def main():
-    banks, bank_order = load_banks(BANKS_FILE)
+    banks = load_banks(BANKS_FILE)
     drums = load_drums(DRUMS_FILE)
+    presets = load_presets(PRESETS_FILE)
     cc_actions = load_cc_config(CC_CONFIG_FILE)
     print(f"Loaded {len(banks)} instrument slots, {len(drums)} drum pads, "
-          f"{len(cc_actions)} CC assignments")
+          f"{len(presets)} presets, {len(cc_actions)} CC assignments")
 
     midi_in = rtmidi.MidiIn()
     idx = find_port(midi_in.get_ports(), "APC Key 25")
@@ -398,10 +630,11 @@ def main():
     midi_in.open_port(idx)
     print(f"Input: {port_name}")
 
-    engine = Engine(banks, bank_order, drums, cc_actions)
+    engine = Engine(banks, drums, presets, cc_actions)
     midi_in.set_callback(engine.handle_midi)
-    print("Keys play the selected slot. Pads cols 1-4 = instruments, "
-          "cols 5-7 = drums, col 8 = loop record. Ctrl+C to quit.")
+    print("Rec button: save all recorded loops to apc_loops.csv")
+    print("Cols 1-4 = instruments (Shift+Up/Down = bank), col 5 = drums, "
+          "cols 6-7 = loops, col 8 = presets. Hold Shift + pads = play notes. Ctrl+C to quit.")
 
     try:
         while True:
